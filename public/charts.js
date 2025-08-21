@@ -72,11 +72,13 @@ function initializeCharts() {
 }
 
 function createApexCharts() {
+    const purpleColor = '#9c27b0'; // Definisikan warna ungu
+    
     const baseOptions = {
         chart: {
             type: 'line',
             height: 280,
-            background: 'rgba(255, 255, 255, 0.1)',
+            background: 'transparent',
             toolbar: {
                 show: false
             },
@@ -86,16 +88,18 @@ function createApexCharts() {
                 speed: 800
             }
         },
+        colors: [purpleColor], // ← TAMBAHKAN INI
         theme: {
-            mode: 'light',
-            palette: 'palette1'
+            mode: 'light'
         },
         stroke: {
             curve: 'smooth',
-            width: 3
+            width: 3,
+            colors: [purpleColor] // ← TAMBAHKAN INI JUGA
         },
         fill: {
             type: 'gradient',
+            colors: [purpleColor], // ← DAN INI
             gradient: {
                 shadeIntensity: 1,
                 opacityFrom: 0.3,
@@ -104,7 +108,7 @@ function createApexCharts() {
             }
         },
         grid: {
-            borderColor: 'rgba(0, 0, 0, 0.1)',
+            borderColor: 'rgba(156, 39, 176, 0.1)', // Ungu transparan untuk grid
             strokeDashArray: 3
         },
         xaxis: {
@@ -128,19 +132,20 @@ function createApexCharts() {
         markers: {
             size: 4,
             strokeWidth: 2,
+            fillColors: [purpleColor], // ← TAMBAHKAN INI
+            strokeColors: [purpleColor], // ← DAN INI
             hover: {
                 size: 6
             }
         }
     };
 
-    // RPM Chart - UBAH KE UNGU
+    // RPM Chart
     charts.rpm = new ApexCharts(document.querySelector("#rpm-chart"), {
         ...baseOptions,
         series: [{
             name: 'RPM',
-            data: chartData.rpm,
-            color: '#9c27b0' // ← UNGU
+            data: chartData.rpm
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -148,13 +153,12 @@ function createApexCharts() {
         }
     });
 
-    // Temperature Chart - UBAH KE UNGU
+    // Temperature Chart
     charts.temperature = new ApexCharts(document.querySelector("#temperature-chart"), {
         ...baseOptions,
         series: [{
             name: 'Temperature',
-            data: chartData.temperature,
-            color: '#9c27b0' // ← UNGU
+            data: chartData.temperature
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -162,13 +166,12 @@ function createApexCharts() {
         }
     });
 
-    // AFR Chart - UBAH KE UNGU
+    // AFR Chart
     charts.afr = new ApexCharts(document.querySelector("#afr-chart"), {
         ...baseOptions,
         series: [{
             name: 'AFR',
-            data: chartData.afr,
-            color: '#9c27b0' // ← UNGU
+            data: chartData.afr
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -176,13 +179,12 @@ function createApexCharts() {
         }
     });
 
-    // TPS Chart - UBAH KE UNGU
+    // TPS Chart
     charts.tps = new ApexCharts(document.querySelector("#tps-chart"), {
         ...baseOptions,
         series: [{
             name: 'TPS',
-            data: chartData.tps,
-            color: '#9c27b0' // ← UNGU
+            data: chartData.tps
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -192,13 +194,12 @@ function createApexCharts() {
         }
     });
 
-    // MAP Chart - UBAH KE UNGU
+    // MAP Chart
     charts.map = new ApexCharts(document.querySelector("#map-chart"), {
         ...baseOptions,
         series: [{
             name: 'MAP',
-            data: chartData.map_value,
-            color: '#9c27b0' // ← UNGU
+            data: chartData.map_value
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -206,13 +207,12 @@ function createApexCharts() {
         }
     });
 
-    // Incline Chart - UBAH KE UNGU
+    // Incline Chart
     charts.incline = new ApexCharts(document.querySelector("#incline-chart"), {
         ...baseOptions,
         series: [{
             name: 'Incline',
-            data: chartData.incline,
-            color: '#9c27b0' // ← UNGU
+            data: chartData.incline
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -220,13 +220,12 @@ function createApexCharts() {
         }
     });
 
-    // Stroke Chart - UBAH KE UNGU
+    // Stroke Chart
     charts.stroke = new ApexCharts(document.querySelector("#stroke-chart"), {
         ...baseOptions,
         series: [{
             name: 'Stroke',
-            data: chartData.stroke,
-            color: '#9c27b0' // ← UNGU
+            data: chartData.stroke
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -239,6 +238,7 @@ function createApexCharts() {
         chart.render();
     });
 }
+
 
 function updateCharts(data) {
     const now = new Date().toLocaleTimeString();
