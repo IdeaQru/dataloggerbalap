@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Racing Telemetry Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <div class="batik-pattern"></div>
+    <div class="container">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1 class="dashboard-title">🏎️ Racing Telemetry Dashboard</h1>
+                <div class="connection-status">
+                    <span id="status-indicator" class="status-dot offline">●</span>
+                    <span id="status-text" class="status-label">Offline</span>
+                </div>
+            </div>
+        </header>
+
+        <nav class="dashboard-nav">
+            <button class="nav-button active" onclick="showTab('cards')" data-tab="cards">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Cards</span>
+            </button>
+            <button class="nav-button" onclick="showTab('charts')" data-tab="charts">
+                <span class="nav-icon">📈</span>
+                <span class="nav-text">Charts</span>
+            </button>
+            <button class="nav-button" onclick="showTab('table')" data-tab="table">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Data Table</span>
+            </button>
+        </nav>
+
+        <!-- Cards Tab -->
+        <div id="cards-tab" class="tab-content active">
+            <div id="cards-container"></div>
+        </div>
+
+        <!-- Charts Tab -->
+        <div id="charts-tab" class="tab-content">
+            <div id="charts-container"></div>
+        </div>
+
+        <!-- Table Tab -->
+        <div id="table-tab" class="tab-content">
+            <div class="table-actions">
+                <button id="export-pdf" class="export-btn">
+                    <span>📄</span> Export PDF
+                </button>
+                <button id="export-csv" class="export-btn">
+                    <span>📊</span> Export CSV
+                </button>
+            </div>
+            <div class="table-container">
+                <table id="data-table" class="telemetry-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Device ID</th>
+                            <th>Lap</th>
+                            <th>RPM</th>
+                            <th>Temperature (°C)</th>
+                            <th>AFR</th>
+                            <th>TPS (%)</th>
+                            <th>MAP (kPa)</th>
+                            <th>Incline (°)</th>
+                            <th>Stroke (mm)</th>
+                            <th>Speed (km/h)</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                            <th>Satellites</th>
+                            <th>AI Classification</th>
+                            <th>Cooling Active</th>
+                            <th>Fan On</th>
+                            <th>Current Temp (°C)</th>
+                            <th>Free Heap</th>
+                            <th>Uptime</th>
+                            <th>WiFi RSSI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Data rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="dashboard-footer">
+            <div class="footer-stats">
+                <div class="footer-item">
+                    <span class="footer-label">Last Update:</span>
+                    <span id="last-update" class="footer-value">Never</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">Total Records:</span>
+                    <span id="total-records" class="footer-value">0</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="cards.js"></script>
+    <script src="charts.js"></script>
+    <script>
+        // Socket.IO connection
+        const socket = io();
+
+        // Global state
+        let isConnected = false;
+        let allTelemetryData = [];
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCards();
+            initializeCharts();
+            initializeTable();
+            loadHistoricalData();
+            
+            // Setup export button handlers
+            document.getElementById('export-pdf').addEventListener('click', exportToPDF);
+            document.getElementById('export-csv').addEventListener('click', exportToCSV);
+        });
+
+        // Socket event listeners
+        socket.on('connect', () => {
+            updateConnectionStatus(true);
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            updateConnectionStatus(false);
+            console.log('Disconnected from server');
+        });
+
+        socket.on('telemetry-update', (data) => {
+            console.log('Received telemetry update:', data);
+            
+            // Add to data array
+            allTelemetryData.push(data);
+            
+            // Keep only latest 100 records
+            if (allTelemetryData.length > 100) {
+                allTelemetryData.shift();
+            }
+            
+            updateCards(data);
+            updateCharts(data);
+            addTableRow(data);
+            updateFooter();
+        });
+
+        socket.on('history-data', (data) => {
+            console.log('Received historical data:', data.length, 'records');
+            allTelemetryData = data;
+            loadChartsWithHistoricalData(data);
+            loadTableWithData(data);
+        });
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab and activate button
+            document.getElementById(tabName + '-tab').classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        }
+
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const indicator = document.getElementById('status-indicator');
+            const text = document.getElementById('status-text');
+            
+            if (connected) {
+                indicator.className = 'status-dot online';
+                text.textContent = 'Connected';
+            } else {
+                indicator.className = 'status-dot offline';
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        // Table functions
+        function initializeTable() {
+            console.log('Table initialized');
+        }
+
+        function addTableRow(data) {
+            const tbody = document.getElementById('table-body');
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td>${new Date(data.timestamp || Date.now()).toLocaleString()}</td>
+                <td>${data.device_id || '-'}</td>
+                <td>${data.lap_number || '-'}</td>
+                <td>${data.sensors?.rpm || '-'}</td>
+                <td>${data.sensors?.temperature || '-'}</td>
+                <td>${data.sensors?.afr || '-'}</td>
+                <td>${data.sensors?.tps || '-'}</td>
+                <td>${data.sensors?.map_value || '-'}</td>
+                <td>${data.sensors?.incline || '-'}</td>
+                <td>${data.sensors?.stroke || '-'}</td>
+                <td>${data.gps?.speed || '-'}</td>
+                <td>${data.gps?.latitude || '-'}</td>
+                <td>${data.gps?.longitude || '-'}</td>
+                <td>${data.gps?.satellites || '-'}</td>
+                <td>${data.ai_classification?.classification_text || '-'}</td>
+                <td>${data.cooling?.system_active ? 'Yes' : 'No'}</td>
+                <td>${data.cooling?.fan_on ? 'Yes' : 'No'}</td>
+                <td>${data.cooling?.current_temp || '-'}</td>
+                <td>${formatBytes(data.system_health?.free_heap) || '-'}</td>
+                <td>${formatUptime(data.system_health?.uptime) || '-'}</td>
+                <td>${data.system_health?.wifi_rssi || '-'}</td>
+            `;
+            
+            tbody.appendChild(row);
+            
+            // Keep only latest 50 rows visible
+            while (tbody.children.length > 50) {
+                tbody.removeChild(tbody.firstChild);
+            }
+            
+            // Update total records count
+            document.getElementById('total-records').textContent = allTelemetryData.length;
+        }
+
+        function loadTableWithData(dataArray) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            // Load latest 50 records
+            const recentData = dataArray.slice(-50);
+            recentData.forEach(data => {
+                addTableRow(data);
+            });
+        }
+
+        // Export functions
+        function exportToPDF() {
+            if (allTelemetryData.length === 0) {
+                alert('No data available for export');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
+            
+            // Add title
+            doc.setFontSize(18);
+            doc.text('Racing Telemetry Data Report', 14, 22);
+            
+            // Add generation date
+            doc.setFontSize(10);
+            doc.text('Generated on: ' + new Date().toLocaleString(), 14, 30);
+            
+            // Prepare table data
+            const columns = [
+                'Timestamp', 'Device', 'Lap', 'RPM', 'Temp', 'AFR', 'TPS', 'MAP', 
+                'Incline', 'Stroke', 'Speed', 'Lat', 'Lng', 'Sat', 'AI Class', 
+                'Cooling', 'Fan', 'C.Temp', 'Heap', 'Uptime', 'RSSI'
+            ];
+            
+            const rows = allTelemetryData.map(data => [
+                new Date(data.timestamp || Date.now()).toLocaleString(),
+                data.device_id || '-',
+                data.lap_number || '-',
+                data.sensors?.rpm || '-',
+                data.sensors?.temperature || '-',
+                data.sensors?.afr || '-',
+                data.sensors?.tps || '-',
+                data.sensors?.map_value || '-',
+                data.sensors?.incline || '-',
+                data.sensors?.stroke || '-',
+                data.gps?.speed || '-',
+                data.gps?.latitude || '-',
+                data.gps?.longitude || '-',
+                data.gps?.satellites || '-',
+                data.ai_classification?.classification_text || '-',
+                data.cooling?.system_active ? 'Yes' : 'No',
+                data.cooling?.fan_on ? 'Yes' : 'No',
+                data.cooling?.current_temp || '-',
+                formatBytes(data.system_health?.free_heap) || '-',
+                formatUptime(data.system_health?.uptime) || '-',
+                data.system_health?.wifi_rssi || '-'
+            ]);
+
+            // Generate table
+            doc.autoTable({
+                head: [columns],
+                body: rows,
+                startY: 35,
+                styles: { fontSize: 6 },
+                headStyles: { 
+                    fillColor: [233, 30, 99],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold'
+                },
+                theme: 'striped'
+            });
+
+            // Save PDF
+            doc.save(`racing_telemetry_${new Date().toISOString().slice(0, 10)}.pdf`);
+        }
+
+        function exportToCSV() {
+            if (allTelemetryData.length === 0) {
+                alert('No data available for export');
+                return;
+            }
+
+            // Prepare CSV headers
+            const headers = [
+                'Timestamp', 'Device ID', 'Lap', 'RPM', 'Temperature', 'AFR', 'TPS', 
+                'MAP Value', 'Incline', 'Stroke', 'Speed', 'Latitude', 'Longitude', 
+                'Satellites', 'AI Classification', 'Cooling Active', 'Fan On', 
+                'Current Temp', 'Free Heap', 'Uptime', 'WiFi RSSI'
+            ];
+
+            // Prepare CSV rows
+            const csvContent = [headers.join(',')];
+            
+            allTelemetryData.forEach(data => {
+                const row = [
+                    `"${new Date(data.timestamp || Date.now()).toLocaleString()}"`,
+                    `"${data.device_id || ''}"`,
+                    data.lap_number || '',
+                    data.sensors?.rpm || '',
+                    data.sensors?.temperature || '',
+                    data.sensors?.afr || '',
+                    data.sensors?.tps || '',
+                    data.sensors?.map_value || '',
+                    data.sensors?.incline || '',
+                    data.sensors?.stroke || '',
+                    data.gps?.speed || '',
+                    data.gps?.latitude || '',
+                    data.gps?.longitude || '',
+                    data.gps?.satellites || '',
+                    `"${data.ai_classification?.classification_text || ''}"`,
+                    data.cooling?.system_active ? 'Yes' : 'No',
+                    data.cooling?.fan_on ? 'Yes' : 'No',
+                    data.cooling?.current_temp || '',
+                    data.system_health?.free_heap || '',
+                    data.system_health?.uptime || '',
+                    data.system_health?.wifi_rssi || ''
+                ];
+                csvContent.push(row.join(','));
+            });
+
+            // Create and download CSV file
+            const blob = new Blob([csvContent.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `racing_telemetry_${new Date().toISOString().slice(0, 10)}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Utility functions
+        function formatBytes(bytes) {
+            if (!bytes) return '';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function formatUptime(ms) {
+            if (!ms) return '';
+            const seconds = Math.floor(ms / 1000);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        // Load historical data
+        function loadHistoricalData() {
+            socket.emit('request-history', 50);
+        }
+
+        // Update footer
+        function updateFooter() {
+            document.getElementById('last-update').textContent = new Date().toLocaleString();
+        }
+    </script>
+</body>
+</html>
