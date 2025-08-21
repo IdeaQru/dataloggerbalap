@@ -2,15 +2,15 @@
 
 :root {
     --primary-pink: #e91ed1;
-    --secondary-pink: #e44175;
-    --light-pink: #f7b8cd;
+    --secondary-pink: #e441c1;
+    --light-pink: #f7b8f3;
     --dark-pink: #000000;
     --black: #1a1a1a;
     --dark-gray: #222121;
     --white: #ffffff;
     --off-white: #fafafa;
-    --border-color: rgba(233, 30, 99, 0.2);
-    --shadow-color: rgba(233, 30, 99, 0.15);
+    --border-color: rgba(223, 30, 233, 0.2);
+    --shadow-color: rgba(233, 30, 192, 0.15);
     --text-primary: #1a1a1a;
     --text-secondary: #414040;
 }
