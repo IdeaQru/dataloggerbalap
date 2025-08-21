@@ -78,7 +78,7 @@ function createApexCharts() {
         chart: {
             type: 'line',
             height: 280,
-            background:  'rgba(155, 39, 176, 0.8)', // Ungu transparan untuk grid',
+            background: 'transparent',
             toolbar: {
                 show: false
             },
@@ -108,7 +108,7 @@ function createApexCharts() {
             }
         },
         grid: {
-            borderColor: 'rgba(155, 39, 176, 0.8)', // Ungu transparan untuk grid
+            borderColor: 'rgba(156, 39, 176, 0.1)', // Ungu transparan untuk grid
             strokeDashArray: 3
         },
         xaxis: {
