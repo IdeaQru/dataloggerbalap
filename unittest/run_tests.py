@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 # Konfigurasi
-API_URL = "http://localhost:7187/api/telemetry"  # Ganti dengan URL server Anda
+API_URL = "http://47.237.23.149:7187/api/telemetry"  # Ganti dengan URL server Anda
 INTERVAL = 1  # Interval dalam detik
 
 def generate_random_data():
