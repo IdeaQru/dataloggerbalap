@@ -134,13 +134,13 @@ function createApexCharts() {
         }
     };
 
-    // RPM Chart
+    // RPM Chart - UBAH KE UNGU
     charts.rpm = new ApexCharts(document.querySelector("#rpm-chart"), {
         ...baseOptions,
         series: [{
             name: 'RPM',
             data: chartData.rpm,
-            color: '#e91e63'
+            color: '#9c27b0' // ← UNGU
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -148,13 +148,13 @@ function createApexCharts() {
         }
     });
 
-    // Temperature Chart
+    // Temperature Chart - UBAH KE UNGU
     charts.temperature = new ApexCharts(document.querySelector("#temperature-chart"), {
         ...baseOptions,
         series: [{
             name: 'Temperature',
             data: chartData.temperature,
-            color: '#ff5722'
+            color: '#9c27b0' // ← UNGU
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -162,13 +162,13 @@ function createApexCharts() {
         }
     });
 
-    // AFR Chart
+    // AFR Chart - UBAH KE UNGU
     charts.afr = new ApexCharts(document.querySelector("#afr-chart"), {
         ...baseOptions,
         series: [{
             name: 'AFR',
             data: chartData.afr,
-            color: '#9c27b0'
+            color: '#9c27b0' // ← UNGU
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -176,13 +176,13 @@ function createApexCharts() {
         }
     });
 
-    // TPS Chart
+    // TPS Chart - UBAH KE UNGU
     charts.tps = new ApexCharts(document.querySelector("#tps-chart"), {
         ...baseOptions,
         series: [{
             name: 'TPS',
             data: chartData.tps,
-            color: '#e91e63'
+            color: '#9c27b0' // ← UNGU
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -192,13 +192,13 @@ function createApexCharts() {
         }
     });
 
-    // MAP Chart
+    // MAP Chart - UBAH KE UNGU
     charts.map = new ApexCharts(document.querySelector("#map-chart"), {
         ...baseOptions,
         series: [{
             name: 'MAP',
             data: chartData.map_value,
-            color: '#673ab7'
+            color: '#9c27b0' // ← UNGU
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -206,13 +206,13 @@ function createApexCharts() {
         }
     });
 
-    // Incline Chart
+    // Incline Chart - UBAH KE UNGU
     charts.incline = new ApexCharts(document.querySelector("#incline-chart"), {
         ...baseOptions,
         series: [{
             name: 'Incline',
             data: chartData.incline,
-            color: '#f50057'
+            color: '#9c27b0' // ← UNGU
         }],
         yaxis: {
             ...baseOptions.yaxis,
@@ -220,13 +220,13 @@ function createApexCharts() {
         }
     });
 
-    // Stroke Chart
+    // Stroke Chart - UBAH KE UNGU
     charts.stroke = new ApexCharts(document.querySelector("#stroke-chart"), {
         ...baseOptions,
         series: [{
             name: 'Stroke',
             data: chartData.stroke,
-            color: '#e91e63'
+            color: '#9c27b0' // ← UNGU
         }],
         yaxis: {
             ...baseOptions.yaxis,
