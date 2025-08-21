@@ -76,7 +76,7 @@ function createApexCharts() {
         chart: {
             type: 'line',
             height: 280,
-            background: 'transparent',
+            background: 'rgba(255, 255, 255, 0.1)',
             toolbar: {
                 show: false
             },
