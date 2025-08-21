@@ -72,7 +72,7 @@ function initializeCharts() {
 }
 
 function createApexCharts() {
-    const purpleColor = '#9c27b0'; // Definisikan warna ungu
+    const purpleColor = '#9c27b0';
     
     const baseOptions = {
         chart: {
@@ -86,158 +86,147 @@ function createApexCharts() {
                 enabled: true,
                 easing: 'easeinout',
                 speed: 800
+            },
+            zoom: {
+                enabled: false
             }
         },
-        colors: [purpleColor], // ← TAMBAHKAN INI
-        theme: {
-            mode: 'light'
+        colors: [purpleColor],
+        dataLabels: {
+            enabled: false  // Pastikan data labels tidak tampil
         },
         stroke: {
             curve: 'smooth',
             width: 3,
-            colors: [purpleColor] // ← TAMBAHKAN INI JUGA
+            lineCap: 'round'
         },
         fill: {
             type: 'gradient',
-            colors: [purpleColor], // ← DAN INI
             gradient: {
-                shadeIntensity: 1,
-                opacityFrom: 0.3,
+                shade: 'light',
+                type: 'vertical',
+                shadeIntensity: 0.5,
+                gradientToColors: [purpleColor],
+                inverseColors: false,
+                opacityFrom: 0.4,
                 opacityTo: 0.1,
                 stops: [0, 100]
             }
         },
         grid: {
-            borderColor: 'rgba(156, 39, 176, 0.1)', // Ungu transparan untuk grid
-            strokeDashArray: 3
+            borderColor: 'rgba(156, 39, 176, 0.1)',
+            strokeDashArray: 3,
+            xaxis: {
+                lines: {
+                    show: true
+                }
+            },
+            yaxis: {
+                lines: {
+                    show: true
+                }
+            }
+        },
+        markers: {
+            size: 0,
+            strokeWidth: 0,
+            strokeColors: 'transparent',
+            fillColors: 'transparent',
+            hover: {
+                size: 4,
+                strokeWidth: 2,
+                strokeColors: purpleColor
+            }
         },
         xaxis: {
+            type: 'category',
             categories: chartData.labels,
             labels: {
                 style: {
-                    colors: '#333'
-                }
+                    colors: '#666',
+                    fontSize: '12px'
+                },
+                rotate: -45
+            },
+            axisBorder: {
+                show: true,
+                color: 'rgba(156, 39, 176, 0.2)'
             }
         },
         yaxis: {
             labels: {
                 style: {
-                    colors: '#333'
+                    colors: '#666',
+                    fontSize: '12px'
                 }
+            }
+        },
+        tooltip: {
+            enabled: true,
+            theme: 'light',
+            x: {
+                show: true
+            },
+            y: {
+                formatter: function(val) {
+                    return val;
+                }
+            },
+            marker: {
+                show: false
             }
         },
         legend: {
             show: false
-        },
-        markers: {
-            size: 4,
-            strokeWidth: 2,
-            fillColors: [purpleColor], // ← TAMBAHKAN INI
-            strokeColors: [purpleColor], // ← DAN INI
-            hover: {
-                size: 6
-            }
         }
     };
 
-    // RPM Chart
-    charts.rpm = new ApexCharts(document.querySelector("#rpm-chart"), {
-        ...baseOptions,
-        series: [{
-            name: 'RPM',
-            data: chartData.rpm
-        }],
-        yaxis: {
-            ...baseOptions.yaxis,
-            title: { text: 'RPM', style: { color: '#333' } }
-        }
-    });
+    // Render semua chart dengan baseOptions yang sama
+    const chartConfigs = [
+        { id: 'rpm-chart', key: 'rpm', name: 'RPM', title: 'RPM' },
+        { id: 'temperature-chart', key: 'temperature', name: 'Temperature', title: 'Temperature (°C)' },
+        { id: 'afr-chart', key: 'afr', name: 'AFR', title: 'AFR' },
+        { id: 'tps-chart', key: 'tps', name: 'TPS', title: 'TPS (%)' },
+        { id: 'map-chart', key: 'map_value', name: 'MAP', title: 'MAP (kPa)' },
+        { id: 'incline-chart', key: 'incline', name: 'Incline', title: 'Incline (°)' },
+        { id: 'stroke-chart', key: 'stroke', name: 'Stroke', title: 'Stroke (mm)' }
+    ];
 
-    // Temperature Chart
-    charts.temperature = new ApexCharts(document.querySelector("#temperature-chart"), {
-        ...baseOptions,
-        series: [{
-            name: 'Temperature',
-            data: chartData.temperature
-        }],
-        yaxis: {
-            ...baseOptions.yaxis,
-            title: { text: 'Temperature (°C)', style: { color: '#333' } }
-        }
-    });
+    chartConfigs.forEach(config => {
+        const chartOptions = {
+            ...baseOptions,
+            series: [{
+                name: config.name,
+                data: chartData[config.key] || []
+            }],
+            yaxis: {
+                ...baseOptions.yaxis,
+                title: {
+                    text: config.title,
+                    style: { 
+                        color: '#333',
+                        fontSize: '12px',
+                        fontWeight: 600
+                    }
+                }
+            }
+        };
 
-    // AFR Chart
-    charts.afr = new ApexCharts(document.querySelector("#afr-chart"), {
-        ...baseOptions,
-        series: [{
-            name: 'AFR',
-            data: chartData.afr
-        }],
-        yaxis: {
-            ...baseOptions.yaxis,
-            title: { text: 'AFR', style: { color: '#333' } }
+        // Khusus untuk TPS, set min/max
+        if (config.key === 'tps') {
+            chartOptions.yaxis = {
+                ...chartOptions.yaxis,
+                min: 0,
+                max: 100
+            };
         }
-    });
 
-    // TPS Chart
-    charts.tps = new ApexCharts(document.querySelector("#tps-chart"), {
-        ...baseOptions,
-        series: [{
-            name: 'TPS',
-            data: chartData.tps
-        }],
-        yaxis: {
-            ...baseOptions.yaxis,
-            title: { text: 'TPS (%)', style: { color: '#333' } },
-            min: 0,
-            max: 100
-        }
-    });
-
-    // MAP Chart
-    charts.map = new ApexCharts(document.querySelector("#map-chart"), {
-        ...baseOptions,
-        series: [{
-            name: 'MAP',
-            data: chartData.map_value
-        }],
-        yaxis: {
-            ...baseOptions.yaxis,
-            title: { text: 'MAP (kPa)', style: { color: '#333' } }
-        }
-    });
-
-    // Incline Chart
-    charts.incline = new ApexCharts(document.querySelector("#incline-chart"), {
-        ...baseOptions,
-        series: [{
-            name: 'Incline',
-            data: chartData.incline
-        }],
-        yaxis: {
-            ...baseOptions.yaxis,
-            title: { text: 'Incline (°)', style: { color: '#333' } }
-        }
-    });
-
-    // Stroke Chart
-    charts.stroke = new ApexCharts(document.querySelector("#stroke-chart"), {
-        ...baseOptions,
-        series: [{
-            name: 'Stroke',
-            data: chartData.stroke
-        }],
-        yaxis: {
-            ...baseOptions.yaxis,
-            title: { text: 'Stroke (mm)', style: { color: '#333' } }
-        }
-    });
-
-    // Render all charts
-    Object.values(charts).forEach(chart => {
-        chart.render();
+        const chartKey = config.key === 'map_value' ? 'map' : config.key;
+        charts[chartKey] = new ApexCharts(document.querySelector(`#${config.id}`), chartOptions);
+        charts[chartKey].render();
     });
 }
+
 
 
 function updateCharts(data) {
