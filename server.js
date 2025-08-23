@@ -67,7 +67,8 @@ if (!fs.existsSync(CSV_FILE)) {
 app.post('/api/telemetry', (req, res) => {
     const data = req.body;
     console.log('Received telemetry data:', data);
-    
+    // Lakukan pengolahan data timestamp dengan waktu bawaan supaya nilai sensor saya mengikuti waktu bawaan diterimanya website
+    data.timestamp = new Date().toISOString();
     // Simpan ke CSV
     saveToCsv(data);
     
