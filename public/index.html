@@ -13,15 +13,6 @@
 <body>
     <div class="batik-pattern"></div>
     <div class="container">
-        <header class="dashboard-header">
-            <div class="header-content">
-                <h1 class="dashboard-title">🏎️ Racing Telemetry Dashboard</h1>
-                <div class="connection-status">
-                    <span id="status-indicator" class="status-dot offline">●</span>
-                    <span id="status-text" class="status-label">Offline</span>
-                </div>
-            </div>
-        </header>
 
         <nav class="dashboard-nav">
             <button class="nav-button active" onclick="showTab('cards')" data-tab="cards">
@@ -36,6 +27,10 @@
                 <span class="nav-icon">📋</span>
                 <span class="nav-text">Data Table</span>
             </button>
+               <div class="connection-status">
+                    <span id="status-indicator" class="status-dot offline">●</span>
+                    <span id="status-text" class="status-label">Offline</span>
+                </div>
         </nav>
 
         <!-- Cards Tab -->
