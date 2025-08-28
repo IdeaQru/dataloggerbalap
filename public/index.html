@@ -610,43 +610,6 @@
         // ============================================================================
 
         // Add debug test button
-        function addDebugButton() {
-            const debugBtn = document.createElement('button');
-            debugBtn.innerHTML = '🔧 Test Qt Bridge';
-            debugBtn.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        z-index: 9999;
-        background: #2196F3;
-        color: white;
-        border: none;
-        padding: 12px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    `;
-
-            debugBtn.onclick = function () {
-                console.log('=== 🔧 Qt Bridge Debug Test ===');
-                console.log('qtBridge available:', typeof qtBridge, qtBridge ? 'YES' : 'NO');
-                console.log('Qt integration active:', isQtIntegration);
-                console.log('Data count:', allTelemetryData.length);
-                console.log('Qt object:', typeof qt);
-                console.log('QWebChannel:', typeof QWebChannel);
-
-                if (qtBridge && qtBridge.logMessage) {
-                    qtBridge.logMessage('🧪 Debug test from JavaScript - Force Mode Active');
-                    alert('✅ Qt Bridge is working! Check Qt console for message.');
-                } else {
-                    alert('❌ Qt Bridge not available. Check browser console for details.');
-                }
-            };
-
-            document.body.appendChild(debugBtn);
-            console.log('🔧 Debug button added');
-        }
 
         // Error handler
         window.addEventListener('error', function (event) {
