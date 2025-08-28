@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
+
 <body>
     <div class="batik-pattern"></div>
     <div class="container">
@@ -27,10 +29,10 @@
                 <span class="nav-icon">📋</span>
                 <span class="nav-text">Data Table</span>
             </button>
-               <div class="connection-status">
-                    <span id="status-indicator" class="status-dot offline">●</span>
-                    <span id="status-text" class="status-label">Offline</span>
-                </div>
+            <div class="connection-status">
+                <span id="status-indicator" class="status-dot offline">●</span>
+                <span id="status-text" class="status-label">Offline</span>
+            </div>
         </nav>
 
         <!-- Cards Tab -->
@@ -103,687 +105,566 @@
 
     <script src="cards.js"></script>
     <script src="charts.js"></script>
-<script>
-// ============================================================================
-// GLOBAL VARIABLES & INITIALIZATION  
-// ============================================================================
 
-// Socket.IO connection
-const socket = io();
+    <script>
+        // ============================================================================
+        // GLOBAL VARIABLES & INITIALIZATION  
+        // ============================================================================
 
-// Qt WebChannel integration
-let qtBridge = null;
-let isQtIntegration = false;
+        // Socket.IO connection
+        const socket = io();
 
-// Global state
-let isConnected = false;
-let allTelemetryData = [];
+        // Qt WebChannel integration - FORCE ACTIVE
+        let qtBridge = null;
+        let isQtIntegration = true; // FORCE ALWAYS TRUE
 
-// Check for Qt integration parameter
-const urlParams = new URLSearchParams(window.location.search);
-isQtIntegration = urlParams.get('qt_integration') === 'true';
+        // Global state
+        let isConnected = false;
+        let allTelemetryData = [];
 
-console.log('Running mode:', isQtIntegration ? 'Qt Integration' : 'Standalone Web');
+        console.log('🚀 Qt Integration Mode: FORCE ACTIVATED');
 
-// ============================================================================
-// Qt WebChannel Integration
-// ============================================================================
+        // ============================================================================
+        // Qt WebChannel Integration (Complete Implementation)
+        // ============================================================================
 
-// Initialize Qt bridge when available
-function initQtBridge() {
-    if (typeof qt !== 'undefined' && qt.webChannelTransport) {
-        new QWebChannel(qt.webChannelTransport, function (channel) {
-            qtBridge = channel.objects.qtBridge;
-            console.log('Qt bridge connected successfully');
-            
-            // Setup Qt-specific functionality
-            setupQtExports();
-            setupQtEventHandlers();
-            
-            // Request initial data from Qt
-            if (qtBridge.requestTelemetryData) {
+        // Enhanced Qt integration detection and initialization
+        function checkQtIntegration() {
+            const detectionMethods = {
+                forceFlag: true,
+                windowFlag: window.isQtIntegration === true,
+                qtEnvironment: typeof qt !== 'undefined',
+                webChannelAvailable: typeof QWebChannel !== 'undefined',
+                transportAvailable: typeof qt !== 'undefined' && qt.webChannelTransport
+            };
+
+            console.log('=== Qt Integration Detection ===');
+            Object.entries(detectionMethods).forEach(([key, value]) => {
+                console.log(`- ${key}:`, value);
+            });
+
+            isQtIntegration = Object.values(detectionMethods).some(Boolean);
+            console.log('✅ Final Qt Integration Status:', isQtIntegration);
+
+            return isQtIntegration;
+        }
+
+        // Initialize Qt bridge with comprehensive error handling
+        function initQtBridge() {
+            console.log('🔄 Initializing Qt Bridge...');
+
+            if (typeof qt === 'undefined') {
+                console.error('❌ qt object not available');
+                return;
+            }
+
+            if (!qt.webChannelTransport) {
+                console.error('❌ qt.webChannelTransport not available');
+                return;
+            }
+
+            if (typeof QWebChannel === 'undefined') {
+                console.error('❌ QWebChannel not available, attempting to load...');
+                loadQWebChannelScript();
+                return;
+            }
+
+            try {
+                new QWebChannel(qt.webChannelTransport, function (channel) {
+                    console.log('✅ QWebChannel connected successfully');
+                    console.log('📋 Available objects:', Object.keys(channel.objects));
+
+                    qtBridge = channel.objects.qtBridge;
+
+                    if (qtBridge) {
+                        console.log('✅ qtBridge object connected successfully');
+
+                        // Test connection
+                        qtBridge.logMessage('🎯 JavaScript Force Mode - Successfully Connected to Qt');
+
+                        // Setup Qt-specific functionality
+                        setupQtExports();
+                        setupQtEventHandlers();
+
+                        // Update connection status
+                        updateConnectionStatus(true);
+
+                        // Request initial data
+                        if (qtBridge.requestTelemetryData) {
+                            console.log('📡 Requesting initial telemetry data...');
+                            qtBridge.requestTelemetryData();
+                        }
+
+                    } else {
+                        console.error('❌ qtBridge object not found in channel.objects');
+                        console.log('Available objects:', channel.objects);
+                    }
+                });
+            } catch (error) {
+                console.error('❌ Error initializing QWebChannel:', error);
+            }
+        }
+
+        // Dynamically load QWebChannel script
+        function loadQWebChannelScript() {
+            console.log('📥 Loading QWebChannel script dynamically...');
+            const script = document.createElement('script');
+            script.src = 'qrc:///qtwebchannel/qwebchannel.js';
+            script.onload = function () {
+                console.log('✅ QWebChannel script loaded successfully');
+                setTimeout(initQtBridge, 500);
+            };
+            script.onerror = function () {
+                console.error('❌ Failed to load QWebChannel script');
+            };
+            document.head.appendChild(script);
+        }
+
+        // Setup Qt-specific export functions
+        function setupQtExports() {
+            if (!qtBridge) return;
+
+            console.log('⚙️ Setting up Qt export functions...');
+
+            // Override export functions for Qt integration
+            window.exportToPDF = function () {
+                console.log('📄 PDF Export triggered via Qt...');
+                if (allTelemetryData.length === 0) {
+                    alert('⚠️ No data available for export');
+                    return;
+                }
+                generatePDFForQt();
+            };
+
+            window.exportToCSV = function () {
+                console.log('📊 CSV Export triggered via Qt...');
+                if (allTelemetryData.length === 0) {
+                    alert('⚠️ No data available for export');
+                    return;
+                }
+                generateCSVForQt();
+            };
+
+            console.log('✅ Qt export functions setup complete');
+        }
+
+        // Setup Qt event handlers
+        function setupQtEventHandlers() {
+            if (!qtBridge) return;
+
+            console.log('🔗 Setting up Qt event handlers...');
+
+            // Connect to Qt signals
+            if (qtBridge.dataUpdated) {
+                qtBridge.dataUpdated.connect(function () {
+                    console.log('📡 Data updated signal received from Qt');
+                    requestDataFromQt();
+                });
+                console.log('✅ dataUpdated signal connected');
+            }
+
+            // Listen for telemetry data from Qt
+            if (qtBridge.telemetryDataReady) {
+                qtBridge.telemetryDataReady.connect(function (jsonData) {
+                    console.log('📊 Telemetry data received from Qt:', jsonData ? jsonData.length : 0, 'characters');
+                    updateTelemetryDataFromQt(jsonData);
+                });
+                console.log('✅ telemetryDataReady signal connected');
+            }
+
+            console.log('✅ Qt event handlers setup complete');
+        }
+
+        // Request data from Qt
+        function requestDataFromQt() {
+            if (qtBridge && qtBridge.requestTelemetryData) {
+                console.log('📡 Requesting telemetry data from Qt...');
                 qtBridge.requestTelemetryData();
             }
+        }
+
+        // Generate PDF for Qt integration
+        function generatePDFForQt() {
+            try {
+                console.log('📄 Generating PDF for Qt...');
+
+                if (!window.jsPDF) {
+                    console.error('❌ jsPDF library not available');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('l', 'mm', 'a4');
+
+                // Add title with Qt integration styling
+                doc.setFontSize(20);
+                doc.setTextColor(0, 150, 200);
+                doc.text('Racing Telemetry Data Report', 14, 22);
+                doc.setTextColor(0, 0, 0);
+
+                // Add generation info
+                doc.setFontSize(10);
+                doc.text('Generated via Qt WebEngine Integration (Force Mode)', 14, 30);
+                doc.text('Generated on: ' + new Date().toLocaleString(), 14, 35);
+                doc.text('Total Records: ' + allTelemetryData.length, 14, 40);
+
+                // Prepare table data
+                const columns = [
+                    'Timestamp', 'Device', 'Lap', 'RPM', 'Temp', 'AFR', 'TPS', 'MAP',
+                    'Incline', 'Stroke', 'Speed', 'Lat', 'Lng', 'Sat', 'AI Class',
+                    'Cooling', 'Fan', 'C.Temp', 'Heap', 'Uptime', 'RSSI'
+                ];
+
+                const rows = allTelemetryData.slice(0, 100).map(data => [
+                    new Date(data.timestamp || Date.now()).toLocaleString(),
+                    data.device_id || '-',
+                    data.lap_number || '-',
+                    data.sensors?.rpm || '-',
+                    data.sensors?.temperature || '-',
+                    data.sensors?.afr || '-',
+                    data.sensors?.tps || '-',
+                    data.sensors?.map_value || '-',
+                    data.sensors?.incline || '-',
+                    data.sensors?.stroke || '-',
+                    data.gps?.speed || '-',
+                    data.gps?.latitude || '-',
+                    data.gps?.longitude || '-',
+                    data.gps?.satellites || '-',
+                    data.ai_classification?.classification_text || '-',
+                    data.cooling?.system_active ? 'Yes' : 'No',
+                    data.cooling?.fan_on ? 'Yes' : 'No',
+                    data.cooling?.current_temp || '-',
+                    formatBytes(data.system_health?.free_heap) || '-',
+                    formatUptime(data.system_health?.uptime) || '-',
+                    data.system_health?.wifi_rssi || '-'
+                ]);
+
+                // Generate table
+                if (window.jspdf && window.jspdf.autoTable) {
+                    doc.autoTable({
+                        head: [columns],
+                        body: rows,
+                        startY: 45,
+                        styles: {
+                            fontSize: 6,
+                            cellPadding: 2
+                        },
+                        headStyles: {
+                            fillColor: [0, 150, 200],
+                            textColor: [255, 255, 255],
+                            fontStyle: 'bold'
+                        },
+                        alternateRowStyles: {
+                            fillColor: [240, 248, 255]
+                        },
+                        theme: 'striped'
+                    });
+                }
+
+                // Convert to base64 and send to Qt
+                const pdfData = doc.output('datauristring').split(',')[1];
+
+                if (qtBridge && qtBridge.downloadPDF) {
+                    console.log('📤 Sending PDF data to Qt, length:', pdfData.length);
+                    qtBridge.downloadPDF(pdfData);
+                } else {
+                    console.error('❌ Qt bridge downloadPDF method not available');
+                    doc.save(`racing_telemetry_${new Date().toISOString().slice(0, 10)}.pdf`);
+                }
+
+            } catch (error) {
+                console.error('❌ Error generating PDF:', error);
+                alert('Error generating PDF: ' + error.message);
+                if (qtBridge && qtBridge.logMessage) {
+                    qtBridge.logMessage('PDF generation error: ' + error.message);
+                }
+            }
+        }
+
+        // Generate CSV for Qt integration
+        function generateCSVForQt() {
+            try {
+                console.log('📊 Generating CSV for Qt...');
+
+                // Prepare CSV headers
+                const headers = [
+                    'Timestamp', 'Device ID', 'Lap', 'RPM', 'Temperature', 'AFR', 'TPS',
+                    'MAP Value', 'Incline', 'Stroke', 'Speed', 'Latitude', 'Longitude',
+                    'Satellites', 'AI Classification', 'Cooling Active', 'Fan On',
+                    'Current Temp', 'Free Heap', 'Uptime', 'WiFi RSSI'
+                ];
+
+                // Add metadata header
+                const csvContent = [
+                    '# Racing Telemetry Data Export',
+                    '# Generated via Qt WebEngine Integration (Force Mode)',
+                    '# Generated on: ' + new Date().toLocaleString(),
+                    '# Total Records: ' + allTelemetryData.length,
+                    '', // Empty line
+                    headers.join(',')
+                ];
+
+                // Prepare CSV rows
+                allTelemetryData.forEach(data => {
+                    const row = [
+                        `"${new Date(data.timestamp || Date.now()).toLocaleString()}"`,
+                        `"${data.device_id || ''}"`,
+                        data.lap_number || '',
+                        data.sensors?.rpm || '',
+                        data.sensors?.temperature || '',
+                        data.sensors?.afr || '',
+                        data.sensors?.tps || '',
+                        data.sensors?.map_value || '',
+                        data.sensors?.incline || '',
+                        data.sensors?.stroke || '',
+                        data.gps?.speed || '',
+                        data.gps?.latitude || '',
+                        data.gps?.longitude || '',
+                        data.gps?.satellites || '',
+                        `"${data.ai_classification?.classification_text || ''}"`,
+                        data.cooling?.system_active ? 'Yes' : 'No',
+                        data.cooling?.fan_on ? 'Yes' : 'No',
+                        data.cooling?.current_temp || '',
+                        data.system_health?.free_heap || '',
+                        data.system_health?.uptime || '',
+                        data.system_health?.wifi_rssi || ''
+                    ];
+                    csvContent.push(row.join(','));
+                });
+
+                const finalCsvContent = csvContent.join('\n');
+
+                // Send CSV data to Qt
+                if (qtBridge && qtBridge.downloadCSV) {
+                    console.log('📤 Sending CSV data to Qt, length:', finalCsvContent.length);
+                    qtBridge.downloadCSV(finalCsvContent);
+                } else {
+                    console.error('❌ Qt bridge downloadCSV method not available');
+                    // Fallback to browser download
+                    const blob = new Blob([finalCsvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `racing_telemetry_${new Date().toISOString().slice(0, 10)}.csv`);
+                    link.style.visibility = 'hidden';
+
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+
+            } catch (error) {
+                console.error('❌ Error generating CSV:', error);
+                alert('Error generating CSV: ' + error.message);
+                if (qtBridge && qtBridge.logMessage) {
+                    qtBridge.logMessage('CSV generation error: ' + error.message);
+                }
+            }
+        }
+
+        // Function to receive data from Qt
+        function updateTelemetryDataFromQt(jsonData) {
+            try {
+                console.log('📊 Processing telemetry data from Qt...');
+                if (!jsonData) {
+                    console.log('⚠️ No data received from Qt');
+                    return;
+                }
+
+                const data = JSON.parse(jsonData);
+                allTelemetryData = Array.isArray(data) ? data : [data];
+                console.log('✅ Updated telemetry data from Qt:', allTelemetryData.length, 'records');
+
+                // Update all UI components
+                if (allTelemetryData.length > 0) {
+                    const latestData = allTelemetryData[allTelemetryData.length - 1];
+
+                    // Update UI components if functions exist
+                    if (typeof updateCards === 'function') {
+                        updateCards(latestData);
+                    }
+                    if (typeof loadChartsWithHistoricalData === 'function') {
+                        loadChartsWithHistoricalData(allTelemetryData);
+                    }
+                    if (typeof loadTableWithData === 'function') {
+                        loadTableWithData(allTelemetryData);
+                    }
+                    if (typeof updateFooter === 'function') {
+                        updateFooter();
+                    }
+                }
+
+            } catch (error) {
+                console.error('❌ Error parsing telemetry data from Qt:', error);
+                if (qtBridge && qtBridge.logMessage) {
+                    qtBridge.logMessage('Error parsing telemetry data: ' + error.message);
+                }
+            }
+        }
+
+        // ============================================================================
+        // INITIALIZATION & EVENT HANDLING
+        // ============================================================================
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🚀 DOM Content Loaded - Qt Integration Force Mode Active');
+
+            // Force check Qt integration
+            checkQtIntegration();
+
+            // Initialize UI components
+            if (typeof initializeCards === 'function') initializeCards();
+            if (typeof initializeCharts === 'function') initializeCharts();
+            if (typeof initializeTable === 'function') initializeTable();
+
+            // Setup export button handlers
+            const exportPdfBtn = document.getElementById('export-pdf');
+            const exportCsvBtn = document.getElementById('export-csv');
+
+            if (exportPdfBtn) {
+                exportPdfBtn.addEventListener('click', generatePDFForQt);
+                console.log('✅ PDF export button connected to Qt function');
+            }
+            if (exportCsvBtn) {
+                exportCsvBtn.addEventListener('click', generateCSVForQt);
+                console.log('✅ CSV export button connected to Qt function');
+            }
+
+            // Initialize Qt bridge with comprehensive retry mechanism
+            console.log('🔄 Starting Qt WebChannel initialization...');
+
+            let retryCount = 0;
+            const maxRetries = 25;
+            const retryDelay = 200;
+
+            function tryInitQtBridge() {
+                retryCount++;
+                console.log(`🔄 Qt Bridge Init Attempt: ${retryCount}/${maxRetries}`);
+
+                if (typeof qt !== 'undefined' && qt.webChannelTransport && typeof QWebChannel !== 'undefined') {
+                    console.log('✅ All Qt components ready, initializing bridge...');
+                    initQtBridge();
+                } else if (typeof qt !== 'undefined' && typeof QWebChannel === 'undefined') {
+                    console.log('⚠️ QWebChannel missing, attempting to load...');
+                    loadQWebChannelScript();
+                } else if (retryCount < maxRetries) {
+                    console.log(`⏳ Retrying in ${retryDelay}ms... (Missing: ${typeof qt === 'undefined' ? 'qt, ' : ''
+                        }${typeof QWebChannel === 'undefined' ? 'QWebChannel, ' : ''
+                        }${typeof qt !== 'undefined' && !qt.webChannelTransport ? 'transport' : ''})`);
+                    setTimeout(tryInitQtBridge, retryDelay);
+                } else {
+                    console.error('❌ Failed to initialize Qt bridge after', maxRetries, 'attempts');
+                    console.log('🔍 Final diagnosis:');
+                    console.log('  - qt object:', typeof qt);
+                    console.log('  - QWebChannel:', typeof QWebChannel);
+                    console.log('  - webChannelTransport:', typeof qt !== 'undefined' ? typeof qt.webChannelTransport : 'N/A');
+                }
+            }
+
+            // Start initialization attempts
+            setTimeout(tryInitQtBridge, 100);
         });
-    } else {
-        console.log('Qt WebChannel not available, using Socket.IO mode');
-    }
-}
 
-// Setup Qt-specific export functions
-function setupQtExports() {
-    if (!qtBridge) return;
-    
-    console.log('Setting up Qt export functions');
-    
-    // Override export functions for Qt integration
-    window.exportToPDF = function() {
-        if (allTelemetryData.length === 0) {
-            alert('No data available for export');
-            return;
+        // ============================================================================
+        // UI HELPER FUNCTIONS
+        // ============================================================================
+
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const indicator = document.getElementById('status-indicator');
+            const text = document.getElementById('status-text');
+
+            if (indicator && text) {
+                if (connected) {
+                    indicator.className = 'status-dot online';
+                    text.textContent = 'Qt Connected';
+                } else {
+                    indicator.className = 'status-dot offline';
+                    text.textContent = 'Qt Disconnected';
+                }
+            }
         }
-        
-        console.log('Generating PDF for Qt...');
-        generatePDFForQt();
-    };
-    
-    window.exportToCSV = function() {
-        if (allTelemetryData.length === 0) {
-            alert('No data available for export');
-            return;
+
+        // Utility functions
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
-        
-        console.log('Generating CSV for Qt...');
-        generateCSVForQt();
-    };
-}
 
-// Setup Qt event handlers
-function setupQtEventHandlers() {
-    if (!qtBridge) return;
-    
-    // Connect to Qt signals if available
-    if (qtBridge.dataUpdated) {
-        qtBridge.dataUpdated.connect(function() {
-            console.log('Data updated signal received from Qt');
-            // Refresh UI or request new data
-            requestDataFromQt();
-        });
-    }
-    
-    // Listen for telemetry data from Qt
-    if (qtBridge.telemetryDataReady) {
-        qtBridge.telemetryDataReady.connect(function(jsonData) {
-            console.log('Telemetry data received from Qt:', jsonData.length, 'characters');
-            updateTelemetryDataFromQt(jsonData);
-        });
-    }
-}
-
-// Request data from Qt
-function requestDataFromQt() {
-    if (qtBridge && qtBridge.requestTelemetryData) {
-        qtBridge.requestTelemetryData();
-    }
-}
-
-// Generate PDF for Qt integration
-function generatePDFForQt() {
-    try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
-        
-        // Add title with Qt integration styling
-        doc.setFontSize(20);
-        doc.setTextColor(0, 150, 200); // Cyan color for Qt theme
-        doc.text('Racing Telemetry Data Report', 14, 22);
-        doc.setTextColor(0, 0, 0); // Reset to black
-        
-        // Add generation info
-        doc.setFontSize(10);
-        doc.text('Generated via Qt WebEngine Integration', 14, 30);
-        doc.text('Generated on: ' + new Date().toLocaleString(), 14, 35);
-        doc.text('Total Records: ' + allTelemetryData.length, 14, 40);
-        
-        // Prepare table data
-        const columns = [
-            'Timestamp', 'Device', 'Lap', 'RPM', 'Temp', 'AFR', 'TPS', 'MAP', 
-            'Incline', 'Stroke', 'Speed', 'Lat', 'Lng', 'Sat', 'AI Class', 
-            'Cooling', 'Fan', 'C.Temp', 'Heap', 'Uptime', 'RSSI'
-        ];
-        
-        const rows = allTelemetryData.map(data => [
-            new Date(data.timestamp || Date.now()).toLocaleString(),
-            data.device_id || '-',
-            data.lap_number || '-',
-            data.sensors?.rpm || '-',
-            data.sensors?.temperature || '-',
-            data.sensors?.afr || '-',
-            data.sensors?.tps || '-',
-            data.sensors?.map_value || '-',
-            data.sensors?.incline || '-',
-            data.sensors?.stroke || '-',
-            data.gps?.speed || '-',
-            data.gps?.latitude || '-',
-            data.gps?.longitude || '-',
-            data.gps?.satellites || '-',
-            data.ai_classification?.classification_text || '-',
-            data.cooling?.system_active ? 'Yes' : 'No',
-            data.cooling?.fan_on ? 'Yes' : 'No',
-            data.cooling?.current_temp || '-',
-            formatBytes(data.system_health?.free_heap) || '-',
-            formatUptime(data.system_health?.uptime) || '-',
-            data.system_health?.wifi_rssi || '-'
-        ]);
-
-        // Generate table with Qt theme colors
-        doc.autoTable({
-            head: [columns],
-            body: rows,
-            startY: 45,
-            styles: { 
-                fontSize: 6,
-                cellPadding: 2
-            },
-            headStyles: { 
-                fillColor: [0, 150, 200], // Cyan theme
-                textColor: [255, 255, 255],
-                fontStyle: 'bold'
-            },
-            alternateRowStyles: {
-                fillColor: [240, 248, 255] // Light cyan
-            },
-            theme: 'striped'
-        });
-
-        // Convert to base64 and send to Qt
-        const pdfData = doc.output('datauristring').split(',')[1]; // Remove data:application/pdf;base64,
-        
-        if (qtBridge && qtBridge.downloadPDF) {
-            qtBridge.downloadPDF(pdfData);
-            console.log('PDF data sent to Qt for download');
-        } else {
-            console.error('Qt bridge downloadPDF method not available');
-            // Fallback to browser download
-            doc.save(`racing_telemetry_${new Date().toISOString().slice(0, 10)}.pdf`);
+        function formatUptime(ms) {
+            if (!ms || ms === 0) return '0h 0m';
+            const seconds = Math.floor(ms / 1000);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
         }
-        
-    } catch (error) {
-        console.error('Error generating PDF:', error);
-        alert('Error generating PDF: ' + error.message);
-    }
-}
 
-// Generate CSV for Qt integration
-function generateCSVForQt() {
-    try {
-        // Prepare CSV headers
-        const headers = [
-            'Timestamp', 'Device ID', 'Lap', 'RPM', 'Temperature', 'AFR', 'TPS', 
-            'MAP Value', 'Incline', 'Stroke', 'Speed', 'Latitude', 'Longitude', 
-            'Satellites', 'AI Classification', 'Cooling Active', 'Fan On', 
-            'Current Temp', 'Free Heap', 'Uptime', 'WiFi RSSI'
-        ];
+        // ============================================================================
+        // DEBUG & TESTING
+        // ============================================================================
 
-        // Add metadata header
-        const csvContent = [
-            '# Racing Telemetry Data Export',
-            '# Generated via Qt WebEngine Integration',
-            '# Generated on: ' + new Date().toLocaleString(),
-            '# Total Records: ' + allTelemetryData.length,
-            '', // Empty line
-            headers.join(',')
-        ];
-        
-        // Prepare CSV rows
-        allTelemetryData.forEach(data => {
-            const row = [
-                `"${new Date(data.timestamp || Date.now()).toLocaleString()}"`,
-                `"${data.device_id || ''}"`,
-                data.lap_number || '',
-                data.sensors?.rpm || '',
-                data.sensors?.temperature || '',
-                data.sensors?.afr || '',
-                data.sensors?.tps || '',
-                data.sensors?.map_value || '',
-                data.sensors?.incline || '',
-                data.sensors?.stroke || '',
-                data.gps?.speed || '',
-                data.gps?.latitude || '',
-                data.gps?.longitude || '',
-                data.gps?.satellites || '',
-                `"${data.ai_classification?.classification_text || ''}"`,
-                data.cooling?.system_active ? 'Yes' : 'No',
-                data.cooling?.fan_on ? 'Yes' : 'No',
-                data.cooling?.current_temp || '',
-                data.system_health?.free_heap || '',
-                data.system_health?.uptime || '',
-                data.system_health?.wifi_rssi || ''
-            ];
-            csvContent.push(row.join(','));
-        });
-
-        const finalCsvContent = csvContent.join('\n');
-
-        // Send CSV data to Qt
-        if (qtBridge && qtBridge.downloadCSV) {
-            qtBridge.downloadCSV(finalCsvContent);
-            console.log('CSV data sent to Qt for download');
-        } else {
-            console.error('Qt bridge downloadCSV method not available');
-            // Fallback to browser download
-            const blob = new Blob([finalCsvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            
-            link.setAttribute('href', url);
-            link.setAttribute('download', `racing_telemetry_${new Date().toISOString().slice(0, 10)}.csv`);
-            link.style.visibility = 'hidden';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-        
-    } catch (error) {
-        console.error('Error generating CSV:', error);
-        alert('Error generating CSV: ' + error.message);
-    }
-}
-
-// Function to receive data from Qt
-function updateTelemetryDataFromQt(jsonData) {
-    try {
-        const data = JSON.parse(jsonData);
-        allTelemetryData = Array.isArray(data) ? data : [data];
-        console.log('Updated telemetry data from Qt:', allTelemetryData.length, 'records');
-        
-        // Update all UI components
-        if (allTelemetryData.length > 0) {
-            // Update cards with latest data
-            updateCards(allTelemetryData[allTelemetryData.length - 1]);
-            
-            // Update charts with all data
-            loadChartsWithHistoricalData(allTelemetryData);
-            
-            // Update table with recent data
-            loadTableWithData(allTelemetryData);
-            
-            // Update footer
-            updateFooter();
-        }
-        
-    } catch (error) {
-        console.error('Error parsing telemetry data from Qt:', error);
-        if (qtBridge && qtBridge.logMessage) {
-            qtBridge.logMessage('Error parsing telemetry data: ' + error.message);
-        }
-    }
-}
-
-// ============================================================================
-// Socket.IO Integration (for standalone web mode)
-// ============================================================================
-
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Content Loaded');
-    
-    // Initialize UI components
-    initializeCards();
-    initializeCharts();
-    initializeTable();
-    
-    // Setup export button handlers
-    const exportPdfBtn = document.getElementById('export-pdf');
-    const exportCsvBtn = document.getElementById('export-csv');
-    
-    if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', isQtIntegration ? generatePDFForQt : exportToPDF);
-    }
-    if (exportCsvBtn) {
-        exportCsvBtn.addEventListener('click', isQtIntegration ? generateCSVForQt : exportToCSV);
-    }
-    
-    // Initialize Qt bridge or Socket.IO based on mode
-    if (isQtIntegration) {
-        console.log('Initializing Qt WebChannel integration...');
-        setTimeout(initQtBridge, 1000); // Delay to ensure Qt is ready
-    } else {
-        console.log('Initializing Socket.IO mode...');
-        loadHistoricalData();
-    }
-});
-
-// Socket event listeners (only for standalone web mode)
-if (!isQtIntegration) {
-    socket.on('connect', () => {
-        updateConnectionStatus(true);
-        console.log('Connected to Socket.IO server');
-    });
-
-    socket.on('disconnect', () => {
-        updateConnectionStatus(false);
-        console.log('Disconnected from Socket.IO server');
-    });
-
-    socket.on('telemetry-update', (data) => {
-        console.log('Received telemetry update via Socket.IO:', data);
-        
-        // Add to data array
-        allTelemetryData.push(data);
-        
-        // Keep only latest 100 records
-        if (allTelemetryData.length > 100) {
-            allTelemetryData.shift();
-        }
-        
-        updateCards(data);
-        updateCharts(data);
-        addTableRow(data);
-        updateFooter();
-    });
-
-    socket.on('history-data', (data) => {
-        console.log('Received historical data via Socket.IO:', data.length, 'records');
-        allTelemetryData = data;
-        loadChartsWithHistoricalData(data);
-        loadTableWithData(data);
-    });
-}
-
-// ============================================================================
-// UI FUNCTIONS
-// ============================================================================
-
-// Tab switching
-function showTab(tabName) {
-    // Hide all tab contents
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Remove active class from all buttons
-    document.querySelectorAll('.nav-button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab and activate button
-    const tabElement = document.getElementById(tabName + '-tab');
-    const buttonElement = document.querySelector(`[data-tab="${tabName}"]`);
-    
-    if (tabElement) tabElement.classList.add('active');
-    if (buttonElement) buttonElement.classList.add('active');
-}
-
-// Update connection status
-function updateConnectionStatus(connected) {
-    isConnected = connected;
-    const indicator = document.getElementById('status-indicator');
-    const text = document.getElementById('status-text');
-    
-    if (indicator && text) {
-        if (connected) {
-            indicator.className = 'status-dot online';
-            text.textContent = isQtIntegration ? 'Qt Connected' : 'Socket.IO Connected';
-        } else {
-            indicator.className = 'status-dot offline';
-            text.textContent = isQtIntegration ? 'Qt Disconnected' : 'Socket.IO Disconnected';
-        }
-    }
-}
-
-// ============================================================================
-// TABLE FUNCTIONS
-// ============================================================================
-
-// Table functions
-function initializeTable() {
-    console.log('Table initialized for', isQtIntegration ? 'Qt mode' : 'Socket.IO mode');
-}
-
-function addTableRow(data) {
-    const tbody = document.getElementById('table-body');
-    if (!tbody) return;
-    
-    const row = document.createElement('tr');
-    
-    row.innerHTML = `
-        <td>${new Date(data.timestamp || Date.now()).toLocaleString()}</td>
-        <td>${data.device_id || '-'}</td>
-        <td>${data.lap_number || '-'}</td>
-        <td>${data.sensors?.rpm || '-'}</td>
-        <td>${data.sensors?.temperature || '-'}</td>
-        <td>${data.sensors?.afr || '-'}</td>
-        <td>${data.sensors?.tps || '-'}</td>
-        <td>${data.sensors?.map_value || '-'}</td>
-        <td>${data.sensors?.incline || '-'}</td>
-        <td>${data.sensors?.stroke || '-'}</td>
-        <td>${data.gps?.speed || '-'}</td>
-        <td>${data.gps?.latitude || '-'}</td>
-        <td>${data.gps?.longitude || '-'}</td>
-        <td>${data.gps?.satellites || '-'}</td>
-        <td>${data.ai_classification?.classification_text || '-'}</td>
-        <td>${data.cooling?.system_active ? 'Yes' : 'No'}</td>
-        <td>${data.cooling?.fan_on ? 'Yes' : 'No'}</td>
-        <td>${data.cooling?.current_temp || '-'}</td>
-        <td>${formatBytes(data.system_health?.free_heap) || '-'}</td>
-        <td>${formatUptime(data.system_health?.uptime) || '-'}</td>
-        <td>${data.system_health?.wifi_rssi || '-'}</td>
+        // Add debug test button
+        function addDebugButton() {
+            const debugBtn = document.createElement('button');
+            debugBtn.innerHTML = '🔧 Test Qt Bridge';
+            debugBtn.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 9999;
+        background: #2196F3;
+        color: white;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     `;
-    
-    tbody.appendChild(row);
-    
-    // Keep only latest 50 rows visible
-    while (tbody.children.length > 50) {
-        tbody.removeChild(tbody.firstChild);
-    }
-    
-    // Update total records count
-    const totalRecordsElement = document.getElementById('total-records');
-    if (totalRecordsElement) {
-        totalRecordsElement.textContent = allTelemetryData.length;
-    }
-}
 
-function loadTableWithData(dataArray) {
-    const tbody = document.getElementById('table-body');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    // Load latest 50 records
-    const recentData = dataArray.slice(-50);
-    recentData.forEach(data => {
-        addTableRow(data);
-    });
-}
+            debugBtn.onclick = function () {
+                console.log('=== 🔧 Qt Bridge Debug Test ===');
+                console.log('qtBridge available:', typeof qtBridge, qtBridge ? 'YES' : 'NO');
+                console.log('Qt integration active:', isQtIntegration);
+                console.log('Data count:', allTelemetryData.length);
+                console.log('Qt object:', typeof qt);
+                console.log('QWebChannel:', typeof QWebChannel);
 
-// ============================================================================
-// EXPORT FUNCTIONS (Fallback for standalone web mode)
-// ============================================================================
+                if (qtBridge && qtBridge.logMessage) {
+                    qtBridge.logMessage('🧪 Debug test from JavaScript - Force Mode Active');
+                    alert('✅ Qt Bridge is working! Check Qt console for message.');
+                } else {
+                    alert('❌ Qt Bridge not available. Check browser console for details.');
+                }
+            };
 
-// Export functions for standalone web mode
-function exportToPDF() {
-    if (allTelemetryData.length === 0) {
-        alert('No data available for export');
-        return;
-    }
+            document.body.appendChild(debugBtn);
+            console.log('🔧 Debug button added');
+        }
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Racing Telemetry Data Report', 14, 22);
-    
-    // Add generation date
-    doc.setFontSize(10);
-    doc.text('Generated on: ' + new Date().toLocaleString(), 14, 30);
-    
-    // Prepare table data
-    const columns = [
-        'Timestamp', 'Device', 'Lap', 'RPM', 'Temp', 'AFR', 'TPS', 'MAP', 
-        'Incline', 'Stroke', 'Speed', 'Lat', 'Lng', 'Sat', 'AI Class', 
-        'Cooling', 'Fan', 'C.Temp', 'Heap', 'Uptime', 'RSSI'
-    ];
-    
-    const rows = allTelemetryData.map(data => [
-        new Date(data.timestamp || Date.now()).toLocaleString(),
-        data.device_id || '-',
-        data.lap_number || '-',
-        data.sensors?.rpm || '-',
-        data.sensors?.temperature || '-',
-        data.sensors?.afr || '-',
-        data.sensors?.tps || '-',
-        data.sensors?.map_value || '-',
-        data.sensors?.incline || '-',
-        data.sensors?.stroke || '-',
-        data.gps?.speed || '-',
-        data.gps?.latitude || '-',
-        data.gps?.longitude || '-',
-        data.gps?.satellites || '-',
-        data.ai_classification?.classification_text || '-',
-        data.cooling?.system_active ? 'Yes' : 'No',
-        data.cooling?.fan_on ? 'Yes' : 'No',
-        data.cooling?.current_temp || '-',
-        formatBytes(data.system_health?.free_heap) || '-',
-        formatUptime(data.system_health?.uptime) || '-',
-        data.system_health?.wifi_rssi || '-'
-    ]);
+        // Error handler
+        window.addEventListener('error', function (event) {
+            console.error('🚨 Global JavaScript error:', event.error);
+            if (qtBridge && qtBridge.logMessage) {
+                qtBridge.logMessage('JavaScript Error: ' + event.error.message);
+            }
+        });
 
-    // Generate table
-    doc.autoTable({
-        head: [columns],
-        body: rows,
-        startY: 35,
-        styles: { fontSize: 6 },
-        headStyles: { 
-            fillColor: [0, 150, 200], // Updated to cyan theme
-            textColor: [255, 255, 255],
-            fontStyle: 'bold'
-        },
-        theme: 'striped'
-    });
+        // Add debug button after delay
+        setTimeout(addDebugButton, 3000);
 
-    // Save PDF
-    doc.save(`racing_telemetry_${new Date().toISOString().slice(0, 10)}.pdf`);
-}
+        // Final initialization log
+        console.log('🎯 JavaScript initialization complete - Qt Force Mode Active');
 
-function exportToCSV() {
-    if (allTelemetryData.length === 0) {
-        alert('No data available for export');
-        return;
-    }
+    </script>
 
-    // Prepare CSV headers
-    const headers = [
-        'Timestamp', 'Device ID', 'Lap', 'RPM', 'Temperature', 'AFR', 'TPS', 
-        'MAP Value', 'Incline', 'Stroke', 'Speed', 'Latitude', 'Longitude', 
-        'Satellites', 'AI Classification', 'Cooling Active', 'Fan On', 
-        'Current Temp', 'Free Heap', 'Uptime', 'WiFi RSSI'
-    ];
-
-    // Prepare CSV rows
-    const csvContent = [headers.join(',')];
-    
-    allTelemetryData.forEach(data => {
-        const row = [
-            `"${new Date(data.timestamp || Date.now()).toLocaleString()}"`,
-            `"${data.device_id || ''}"`,
-            data.lap_number || '',
-            data.sensors?.rpm || '',
-            data.sensors?.temperature || '',
-            data.sensors?.afr || '',
-            data.sensors?.tps || '',
-            data.sensors?.map_value || '',
-            data.sensors?.incline || '',
-            data.sensors?.stroke || '',
-            data.gps?.speed || '',
-            data.gps?.latitude || '',
-            data.gps?.longitude || '',
-            data.gps?.satellites || '',
-            `"${data.ai_classification?.classification_text || ''}"`,
-            data.cooling?.system_active ? 'Yes' : 'No',
-            data.cooling?.fan_on ? 'Yes' : 'No',
-            data.cooling?.current_temp || '',
-            data.system_health?.free_heap || '',
-            data.system_health?.uptime || '',
-            data.system_health?.wifi_rssi || ''
-        ];
-        csvContent.push(row.join(','));
-    });
-
-    // Create and download CSV file
-    const blob = new Blob([csvContent.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `racing_telemetry_${new Date().toISOString().slice(0, 10)}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-// Utility functions
-function formatBytes(bytes) {
-    if (!bytes) return '';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-function formatUptime(ms) {
-    if (!ms) return '';
-    const seconds = Math.floor(ms / 1000);
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-}
-
-// Load historical data (Socket.IO mode only)
-function loadHistoricalData() {
-    if (!isQtIntegration && socket) {
-        socket.emit('request-history', 50);
-    }
-}
-
-// Update footer
-function updateFooter() {
-    const lastUpdateElement = document.getElementById('last-update');
-    if (lastUpdateElement) {
-        lastUpdateElement.textContent = new Date().toLocaleString();
-    }
-}
-
-// ============================================================================
-// Qt WebChannel Script Loading
-// ============================================================================
-
-// Load QWebChannel script if running in Qt
-if (isQtIntegration && typeof qt !== 'undefined') {
-    console.log('Loading QWebChannel script...');
-    const script = document.createElement('script');
-    script.src = 'qrc:///qtwebchannel/qwebchannel.js';
-    script.onload = function() {
-        console.log('QWebChannel script loaded, initializing bridge...');
-        initQtBridge();
-    };
-    script.onerror = function() {
-        console.error('Failed to load QWebChannel script');
-    };
-    document.head.appendChild(script);
-} else if (isQtIntegration) {
-    // Fallback initialization
-    setTimeout(initQtBridge, 2000);
-}
-
-// ============================================================================
-// ERROR HANDLING & DEBUGGING
-// ============================================================================
-
-// Global error handler
-window.addEventListener('error', function(event) {
-    console.error('Global error:', event.error);
-    if (qtBridge && qtBridge.logMessage) {
-        qtBridge.logMessage('JavaScript Error: ' + event.error.message);
-    }
-});
-
-// Debug information
-console.log('JavaScript initialization complete');
-console.log('Mode:', isQtIntegration ? 'Qt Integration' : 'Socket.IO Standalone');
-console.log('Qt object available:', typeof qt !== 'undefined');
-
-</script>
 
 </body>
+
 </html>
